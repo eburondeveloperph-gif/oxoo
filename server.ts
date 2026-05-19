@@ -395,6 +395,110 @@ async function startServer() {
     }
   });
 
+  // Chatwoot Sync
+  app.post('/api/whatsapp/chatwoot/sync', authenticateToken, async (req: any, res) => {
+    const gowaUrl = process.env.GOWA_API_URL;
+    if (!gowaUrl) return res.status(503).json({ error: 'GoWA API not configured' });
+    
+    try {
+      const headers: any = {
+        'Content-Type': 'application/json',
+        'Authorization': `Basic ${Buffer.from(`${process.env.GOWA_USERNAME}:${process.env.GOWA_PASSWORD}`).toString('base64')}`
+      };
+      if (process.env.GOWA_TRAEFIK_HOST) {
+        headers['Host'] = process.env.GOWA_TRAEFIK_HOST;
+      }
+
+      let deviceId = process.env.GOWA_DEVICE_ID || '';
+      if (!deviceId) {
+          let devicesRes = await fetch(`${gowaUrl}/devices`, { headers });
+          let devicesData = await devicesRes.json();
+          if (devicesData.results && devicesData.results.length > 0) {
+              deviceId = devicesData.results[0].id;
+          }
+      }
+
+      const response = await fetch(`${gowaUrl}/chatwoot/sync`, {
+        method: 'POST',
+        headers,
+        body: JSON.stringify({
+          device_id: deviceId,
+          days_limit: req.body.days_limit || 7,
+          include_media: req.body.include_media ?? true,
+          include_groups: req.body.include_groups ?? true
+        })
+      });
+      const result = await response.json();
+      res.json(result);
+    } catch (e: any) {
+      res.status(500).json({ error: e.message });
+    }
+  });
+
+  app.get('/api/whatsapp/chatwoot/status', authenticateToken, async (req: any, res) => {
+    const gowaUrl = process.env.GOWA_API_URL;
+    if (!gowaUrl) return res.status(503).json({ error: 'GoWA API not configured' });
+    
+    try {
+      const headers: any = {
+        'Content-Type': 'application/json',
+        'Authorization': `Basic ${Buffer.from(`${process.env.GOWA_USERNAME}:${process.env.GOWA_PASSWORD}`).toString('base64')}`
+      };
+      if (process.env.GOWA_TRAEFIK_HOST) {
+        headers['Host'] = process.env.GOWA_TRAEFIK_HOST;
+      }
+
+      let deviceId = process.env.GOWA_DEVICE_ID || '';
+      if (!deviceId) {
+          let devicesRes = await fetch(`${gowaUrl}/devices`, { headers });
+          let devicesData = await devicesRes.json();
+          if (devicesData.results && devicesData.results.length > 0) {
+              deviceId = devicesData.results[0].id;
+          }
+      }
+
+      const response = await fetch(`${gowaUrl}/chatwoot/sync/status?device_id=${encodeURIComponent(deviceId)}`, { headers });
+      const result = await response.json();
+      res.json(result);
+    } catch (e: any) {
+      res.status(500).json({ error: e.message });
+    }
+  });
+
+  app.post('/api/whatsapp/chatwoot/webhook', async (req, res) => {
+    const gowaUrl = process.env.GOWA_API_URL;
+    if (!gowaUrl) return res.status(503).json({ error: 'GoWA API not configured' });
+    
+    try {
+      // Proxy the webhook request from Chatwoot to the GoWA API
+      const headers: any = {
+        'Content-Type': 'application/json',
+      };
+      // Chatwoot might send a signature header we should forward
+      if (req.headers['x-hub-signature-256']) {
+        headers['x-hub-signature-256'] = req.headers['x-hub-signature-256'];
+      }
+      if (process.env.GOWA_TRAEFIK_HOST) {
+        headers['Host'] = process.env.GOWA_TRAEFIK_HOST;
+      }
+
+      const response = await fetch(`${gowaUrl}/chatwoot/webhook`, {
+        method: 'POST',
+        headers,
+        body: JSON.stringify(req.body)
+      });
+      // the gowa webhook typically returns 200 on success
+      if (response.ok) {
+         res.sendStatus(200);
+      } else {
+         const result = await response.json().catch(() => ({}));
+         res.status(response.status).json(result);
+      }
+    } catch (e: any) {
+      res.status(500).json({ error: e.message });
+    }
+  });
+
   app.post('/api/whatsapp/send', authenticateToken, async (req: any, res) => {
     const gowaUrl = process.env.GOWA_API_URL;
     if (!gowaUrl) return res.status(503).json({ error: 'GoWA API not configured' });

@@ -103,3 +103,13 @@ export const listWhatsappMessages = async (limit?: number) => {
   const limitQuery = limit ? `?limit=${limit}` : '';
   return apiClient.get(`/api/whatsapp/messages${limitQuery}`, token);
 };
+
+export const syncChatwoot = async (days_limit: number = 7, include_media: boolean = true, include_groups: boolean = true) => {
+  const token = await getToken();
+  return apiClient.post('/api/whatsapp/chatwoot/sync', { days_limit, include_media, include_groups }, token);
+};
+
+export const getChatwootStatus = async () => {
+  const token = await getToken();
+  return apiClient.get('/api/whatsapp/chatwoot/status', token);
+};

@@ -1,11 +1,14 @@
 import React, { useState, useEffect } from 'react';
-import { MessageSquare, QrCode, User, Check, RefreshCw } from 'lucide-react';
-import { connectWhatsapp } from '../lib/api-client';
+import { MessageSquare, QrCode, User, Check, RefreshCw, UploadCloud, Activity } from 'lucide-react';
+import { connectWhatsapp, syncChatwoot, getChatwootStatus } from '../lib/api-client';
 
 export function WhatsAppIntegrationPanel() {
   const [loading, setLoading] = useState(false);
   const [data, setData] = useState<any>(null);
   const [error, setError] = useState<string>('');
+  
+  const [syncStatus, setSyncStatus] = useState<any>(null);
+  const [syncing, setSyncing] = useState(false);
 
   const fetchConnection = async () => {
     try {
@@ -13,10 +16,36 @@ export function WhatsAppIntegrationPanel() {
       setError('');
       const res = await connectWhatsapp();
       setData(res);
+      await fetchSyncStatus();
     } catch (e: any) {
       setError(e.message || 'Failed to connect to GoWA');
     } finally {
       setLoading(false);
+    }
+  };
+
+  const fetchSyncStatus = async () => {
+    try {
+      const res = await getChatwootStatus();
+      setSyncStatus(res);
+      if (res?.results?.status === 'running') {
+        setTimeout(fetchSyncStatus, 5000);
+      }
+    } catch (e) {
+      console.error('Failed to get sync status', e);
+    }
+  };
+
+  const handleSyncChatwoot = async () => {
+    try {
+      setSyncing(true);
+      await syncChatwoot(7, true, true);
+      alert('Sync initiated. Depending on the amount of history, it might take a few moments.');
+      await fetchSyncStatus();
+    } catch (e: any) {
+      alert(`Failed to sync to Chatwoot: ${e.message}`);
+    } finally {
+      setSyncing(false);
     }
   };
 
@@ -56,7 +85,41 @@ export function WhatsAppIntegrationPanel() {
       <div style={{ flex: 1, overflowY: 'auto', padding: '0 20px 20px 20px' }}>
         <h4 style={{ color: 'var(--text-muted)', marginBottom: '16px' }}>Connection State</h4>
         {data?.raw_response?.results?.state === 'authenticated' || data?.raw_response?.results?.state === 'OPEN' ? (
-           <p style={{ color: 'var(--text-muted)' }}>Scan successful. Connected to WhatsApp.</p>
+           <div style={{ display: 'flex', flexDirection: 'column', gap: '16px' }}>
+             <p style={{ color: 'var(--text-muted)' }}>Scan successful. Connected to WhatsApp.</p>
+             
+             <div style={{ padding: '16px', backgroundColor: 'rgba(255, 255, 255, 0.05)', borderRadius: '12px', border: '1px solid var(--border-color)' }}>
+               <h4 style={{ color: '#fff', marginBottom: '8px', display: 'flex', alignItems: 'center', gap: '8px' }}>
+                 <UploadCloud size={16} color="#075e54" /> Sync to Chatwoot
+               </h4>
+               <p style={{ color: 'var(--text-muted)', fontSize: '13px', marginBottom: '16px' }}>
+                 Import existing WhatsApp message history into Chatwoot (requires Chatwoot configured on the GoWA node).
+               </p>
+               <button 
+                 onClick={handleSyncChatwoot} 
+                 disabled={syncing || syncStatus?.results?.status === 'running'}
+                 style={{ 
+                   display: 'flex', alignItems: 'center', gap: '8px', padding: '10px 16px', 
+                   backgroundColor: '#075e54', color: '#fff', borderRadius: '8px', 
+                   border: 'none', fontWeight: 'bold', width: '100%', justifyContent: 'center',
+                   opacity: (syncing || syncStatus?.results?.status === 'running') ? 0.5 : 1,
+                   cursor: (syncing || syncStatus?.results?.status === 'running') ? 'not-allowed' : 'pointer'
+                 }}
+               >
+                 {(syncing || syncStatus?.results?.status === 'running') ? (
+                   <><Activity size={16} style={{ animation: 'pulse-anim 2s infinite' }}/> Syncing...</>
+                 ) : (
+                   <><RefreshCw size={16} /> Start Sync (Last 7 Days)</>
+                 )}
+               </button>
+               {syncStatus?.results && (
+                 <div style={{ marginTop: '12px', fontSize: '12px', color: 'var(--text-muted)', backgroundColor: '#000', padding: '8px', borderRadius: '6px' }}>
+                   Status: <strong>{syncStatus.results.status}</strong><br/>
+                   Synced: {syncStatus.results.synced_messages} / {syncStatus.results.total_messages} messages
+                 </div>
+               )}
+             </div>
+           </div>
         ) : (
            <pre style={{ backgroundColor: '#111', padding: '12px', borderRadius: '8px', fontSize: '12px', overflowX: 'auto', color: '#0f0' }}>
              {JSON.stringify(data, null, 2)}

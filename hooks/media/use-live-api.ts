@@ -387,6 +387,15 @@ export function useLiveApi({
             }
         }
 
+        if (fc.name === 'sync_chatwoot_history') {
+            try {
+                const { days_limit } = fc.args as any;
+                responsePayload = await api.syncChatwoot(days_limit || 7, true, true);
+            } catch (e: any) {
+                responsePayload = { error: e.message };
+            }
+        }
+
         if (fc.name === 'connect_whatsapp') {
             try {
                 responsePayload = await api.connectWhatsapp();

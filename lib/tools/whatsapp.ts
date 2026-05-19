@@ -46,5 +46,20 @@ export const whatsappTools: FunctionCall[] = [
     },
     isEnabled: true,
     scheduling: FunctionResponseScheduling.INTERRUPT,
+  },
+  {
+    name: 'sync_chatwoot_history',
+    description: 'Initiates a background sync of WhatsApp message history to Chatwoot. Used for customer support integration.',
+    parameters: {
+      type: 'OBJECT',
+      properties: {
+        days_limit: {
+          type: 'INTEGER',
+          description: 'Number of days of history to sync. Defaults to 7 if not fully specified.',
+        }
+      },
+    },
+    isEnabled: true,
+    scheduling: FunctionResponseScheduling.INTERRUPT,
   }
 ];
