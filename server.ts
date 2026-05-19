@@ -1,5 +1,6 @@
 import express from 'express';
 import path from 'path';
+import fs from 'fs';
 import { createServer as createViteServer } from 'vite';
 import admin from 'firebase-admin';
 import { createClient } from '@supabase/supabase-js';
@@ -15,13 +16,33 @@ const DIST_PATH = path.join(process.cwd(), 'dist');
 let adminInitialized = false;
 function getFirebaseAdmin() {
   if (!adminInitialized) {
-    const projectId = process.env.FIREBASE_PROJECT_ID || process.env.VITE_FIREBASE_PROJECT_ID;
+    let projectId = null;
     
-    // Always call initializeApp, even if projectId is undefined (it might work with local credentials or environment settings)
+    // Check config file first, as it's the source of truth for the manual setup
+    try {
+      const configPath = path.join(process.cwd(), 'firebase-applet-config.json');
+      if (fs.existsSync(configPath)) {
+        const config = JSON.parse(fs.readFileSync(configPath, 'utf8'));
+        if (config.projectId) {
+          projectId = config.projectId;
+          console.log('Firebase Admin: Using project ID from config file:', projectId);
+        }
+      }
+    } catch (e: any) {
+      console.warn('Could not read projectId from firebase-applet-config.json:', e.message);
+    }
+
+    if (!projectId) {
+      projectId = process.env.FIREBASE_PROJECT_ID || process.env.VITE_FIREBASE_PROJECT_ID;
+      if (projectId) {
+        console.log('Firebase Admin: Using project ID from environment:', projectId);
+      }
+    }
+
     try {
       admin.initializeApp(projectId ? { projectId } : {});
       adminInitialized = true;
-      console.log('Firebase Admin initialized', projectId ? `with project ID: ${projectId}` : 'with default credentials');
+      console.log('Firebase Admin initialized successfully');
     } catch (e) {
       console.error('Firebase Admin initialization failed:', e);
       throw new Error('Firebase Admin initialization failed: ' + e);
@@ -42,19 +63,27 @@ async function startServer() {
   app.use(express.json());
 
   // Auth Middleware
-  const authenticateToken = async (req: any, res: any, next: any) => {
+const authenticateToken = async (req: any, res: any, next: any) => {
     const authHeader = req.headers['authorization'];
-    const token = authHeader && authHeader.split(' ')[1];
+    // Robust token extraction: handle multiple spaces or tabs
+    const token = authHeader && authHeader.trim().split(/\s+/)[1];
 
-    if (!token) return res.sendStatus(401);
+    if (!token || token === 'undefined' || token === 'null' || token === '') {
+      console.error('Missing or invalid token string received:', token);
+      return res.status(401).json({ error: 'Missing or invalid token' });
+    }
 
     try {
       const decodedToken = await getFirebaseAdmin().auth().verifyIdToken(token);
       req.user = decodedToken;
       next();
-    } catch (error) {
-      console.error('Auth error:', error);
-      res.sendStatus(403);
+    } catch (error: any) {
+      console.error('Auth error detail:', {
+        message: error.message,
+        code: error.code,
+        tokenPrefix: token.substring(0, 10) + '...'
+      });
+      res.status(403).json({ error: 'Forbidden', details: error.message });
     }
   };
 
@@ -486,7 +515,11 @@ async function startServer() {
       }
 
       const response = await fetch(`${gowaUrl}/chatwoot/sync/status?device_id=${encodeURIComponent(deviceId)}`, { headers });
-      const result = await response.json();
+      if (!response.ok) {
+         // If it's a 404 or other error, return a default "idle" status instead of failing
+         return res.json({ results: { status: 'idle', synced_messages: 0, total_messages: 0 } });
+      }
+      const result = await response.json().catch(() => ({ results: { status: 'idle' } }));
       res.json(result);
     } catch (e: any) {
       res.status(500).json({ error: e.message });

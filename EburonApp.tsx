@@ -391,7 +391,12 @@ export default function EburonApp() {
         await signInWithEmailAndPassword(auth, email, password);
       }
     } catch (err: any) {
-      setAuthError(err.message);
+      if (err.code === 'auth/unauthorized-domain') {
+        const domain = window.location.hostname;
+        setAuthError(`Domain "${domain}" is not authorized. Please add it to "Authorized domains" in your Firebase console (Authentication > Settings).`);
+      } else {
+        setAuthError(err.message);
+      }
     }
   };
 
@@ -411,7 +416,12 @@ export default function EburonApp() {
         }, { merge: true });
       }
     } catch (err: any) {
-      setAuthError(err.message);
+      if (err.code === 'auth/unauthorized-domain') {
+        const domain = window.location.hostname;
+        setAuthError(`Domain "${domain}" is not authorized. Please add it to "Authorized domains" in your Firebase console (Authentication > Settings).`);
+      } else {
+        setAuthError(err.message);
+      }
     }
   };
 

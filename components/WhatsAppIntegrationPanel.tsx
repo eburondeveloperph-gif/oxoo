@@ -16,7 +16,7 @@ export function WhatsAppIntegrationPanel() {
       setError('');
       const res = await connectWhatsapp();
       setData(res);
-      await fetchSyncStatus();
+      await fetchSyncStatus(res);
     } catch (e: any) {
       setError(e.message || 'Failed to connect to GoWA');
     } finally {
@@ -24,15 +24,21 @@ export function WhatsAppIntegrationPanel() {
     }
   };
 
-  const fetchSyncStatus = async () => {
+  const fetchSyncStatus = async (currentData?: any) => {
+    const connData = currentData || data;
+    // Only fetch if authenticated
+    if (connData?.raw_response?.results?.state !== 'authenticated' && connData?.raw_response?.results?.state !== 'OPEN') {
+      return;
+    }
+    
     try {
       const res = await getChatwootStatus();
       setSyncStatus(res);
       if (res?.results?.status === 'running') {
-        setTimeout(fetchSyncStatus, 5000);
+        setTimeout(() => fetchSyncStatus(), 5000);
       }
-    } catch (e) {
-      console.error('Failed to get sync status', e);
+    } catch (e: any) {
+      console.warn('Sync status check delayed or failed:', e.message);
     }
   };
 
