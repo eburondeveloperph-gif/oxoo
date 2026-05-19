@@ -89,7 +89,12 @@ export const saveConversationTurn = async (role: string, content: string, sessio
 };
 
 export const connectWhatsapp = async () => {
-  const response = await fetch('/api/whatsapp/connect'); // hypothetical endpoint
+  const token = await getToken();
+  let url = '/api/whatsapp/connect';
+  if (auth.currentUser?.uid) {
+    url += `?device_id=${encodeURIComponent(auth.currentUser.uid)}`;
+  }
+  const response = await fetch(url, { headers: { 'Authorization': `Bearer ${token}` } });
   return response.json();
 };
 

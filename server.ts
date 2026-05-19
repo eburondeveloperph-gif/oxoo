@@ -299,7 +299,7 @@ async function startServer() {
   });
 
   // WhatsApp Proxy
-  app.get('/api/whatsapp/connect', async (req, res) => {
+  app.get('/api/whatsapp/connect', authenticateToken, async (req: any, res) => {
     const gowaUrl = process.env.GOWA_API_URL;
     if (!gowaUrl) return res.status(503).json({ error: 'GoWA API not configured' });
     
@@ -312,39 +312,67 @@ async function startServer() {
         headers['Host'] = process.env.GOWA_TRAEFIK_HOST;
       }
 
-      // Get or create device
-      let deviceId = process.env.GOWA_DEVICE_ID || '';
+      // Use user UID as device ID for multi-user isolation, fallback to env
+      let deviceId = req.user?.uid || process.env.GOWA_DEVICE_ID;
       
-      if (!deviceId) {
-          let devicesRes = await fetch(`${gowaUrl}/devices`, { headers });
-          let devicesData = await devicesRes.json();
-          
-          if (devicesData && devicesData.results && devicesData.results.length > 0) {
-              deviceId = devicesData.results[0].id;
+      // Check if device exists
+      let deviceExists = false;
+      const checkRes = await fetch(`${gowaUrl}/devices/${deviceId}`, { headers });
+      if (checkRes.ok) {
+         deviceExists = true;
+      }
+
+      if (!deviceExists) {
+          // Create device with this specific ID
+          const createRes = await fetch(`${gowaUrl}/devices`, { 
+              method: 'POST', 
+              headers,
+              body: JSON.stringify({ device_id: deviceId })
+          });
+          const createData = await createRes.json();
+          if (createData.results && createData.results.id) {
+              deviceId = createData.results.id;
           } else {
-              // Create device
-              const createRes = await fetch(`${gowaUrl}/devices`, { method: 'POST', headers });
-              const createData = await createRes.json();
-              if (createData.results && createData.results.id) {
-                  deviceId = createData.results.id;
-              } else {
-                  return res.status(500).json({ error: 'Failed to create WhatsApp device instance.', details: createData });
-              }
+              return res.status(500).json({ error: 'Failed to create WhatsApp device instance.', details: createData });
           }
       }
 
       headers['X-Device-Id'] = deviceId;
       
+      const statusRes = await fetch(`${gowaUrl}/devices/${deviceId}/status`, { headers });
+      const statusData = await statusRes.json();
+      
+      if (statusData?.results?.is_logged_in) {
+          return res.json({
+              data: { qr: undefined },
+              raw_response: { results: { state: 'authenticated' } }
+          });
+      }
+
       // Get login QR
       const loginRes = await fetch(`${gowaUrl}/app/login`, { headers });
       const loginData = await loginRes.json();
       
       let qrUrl = '';
       if (loginData.results && loginData.results.qr_link) {
-          qrUrl = loginData.results.qr_link;
-          // Only replace if the base API is https and the link is http
-          if (gowaUrl.startsWith('https://')) {
-              qrUrl = qrUrl.replace('http://', 'https://');
+          let rawQrUrl = loginData.results.qr_link;
+          
+          // Replace localhost:3000 with actual API url if needed
+          if (rawQrUrl.includes('localhost:3000')) {
+              rawQrUrl = rawQrUrl.replace('http://localhost:3000', gowaUrl);
+          }
+          
+          try {
+              const qrImageRes = await fetch(rawQrUrl, { headers });
+              if (qrImageRes.ok) {
+                  const arrayBuffer = await qrImageRes.arrayBuffer();
+                  const base64 = Buffer.from(arrayBuffer).toString('base64');
+                  qrUrl = `data:image/png;base64,${base64}`;
+              } else {
+                  qrUrl = rawQrUrl;
+              }
+          } catch(e) {
+              qrUrl = rawQrUrl; // fallback
           }
       }
       
@@ -372,7 +400,7 @@ async function startServer() {
       }
 
       // Get device ID
-      let deviceId = process.env.GOWA_DEVICE_ID || '';
+      let deviceId = req.user?.uid || process.env.GOWA_DEVICE_ID || '';
       if (!deviceId) {
           let devicesRes = await fetch(`${gowaUrl}/devices`, { headers: gowaHeaders });
           let devicesData = await devicesRes.json();
@@ -409,7 +437,7 @@ async function startServer() {
         headers['Host'] = process.env.GOWA_TRAEFIK_HOST;
       }
 
-      let deviceId = process.env.GOWA_DEVICE_ID || '';
+      let deviceId = req.user?.uid || process.env.GOWA_DEVICE_ID || '';
       if (!deviceId) {
           let devicesRes = await fetch(`${gowaUrl}/devices`, { headers });
           let devicesData = await devicesRes.json();
@@ -448,7 +476,7 @@ async function startServer() {
         headers['Host'] = process.env.GOWA_TRAEFIK_HOST;
       }
 
-      let deviceId = process.env.GOWA_DEVICE_ID || '';
+      let deviceId = req.user?.uid || process.env.GOWA_DEVICE_ID || '';
       if (!deviceId) {
           let devicesRes = await fetch(`${gowaUrl}/devices`, { headers });
           let devicesData = await devicesRes.json();
@@ -513,7 +541,7 @@ async function startServer() {
       }
 
       // Get device ID
-      let deviceId = process.env.GOWA_DEVICE_ID || '';
+      let deviceId = req.user?.uid || process.env.GOWA_DEVICE_ID || '';
       if (!deviceId) {
           let devicesRes = await fetch(`${gowaUrl}/devices`, { headers });
           let devicesData = await devicesRes.json();

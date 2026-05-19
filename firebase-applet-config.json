@@ -1,10 +1,10 @@
 {
-  "projectId": "planning-with-ai-ca084",
-  "appId": "1:14610107315:web:f4a9efd0c2806d1603d9c6",
-  "apiKey": "AIzaSyAudSe0dNPYkkF_98KeAl9kpMk7HOOPvNw",
-  "authDomain": "planning-with-ai-ca084.firebaseapp.com",
-  "firestoreDatabaseId": "ai-studio-7b6346c5-3723-463e-954e-eb283862db10",
-  "storageBucket": "planning-with-ai-ca084.firebasestorage.app",
-  "messagingSenderId": "14610107315",
-  "measurementId": ""
+  apiKey: "AIzaSyDjmcE7CiKrNpSnu20gFB2cG620HU36Zqg",
+  authDomain: "gen-lang-client-0836251512.firebaseapp.com",
+  databaseURL: "https://gen-lang-client-0836251512-default-rtdb.firebaseio.com",
+  projectId: "gen-lang-client-0836251512",
+  storageBucket: "gen-lang-client-0836251512.firebasestorage.app",
+  messagingSenderId: "811711024905",
+  appId: "1:811711024905:web:b805531d56342ba41b8dd8",
+  measurementId: "G-CEGJCJ914Y"
 }
