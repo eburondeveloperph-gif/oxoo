@@ -236,7 +236,8 @@ export default function EburonApp() {
     const unsubscribe = initAuth(
       async (user: any, token: string) => {
         setIsAuthOpen(false);
-        setActiveOverlay(null);
+        // We don't force clear activeOverlay here to allow user-initiated or default overlays to persist
+        // setActiveOverlay(null);
         // Fetch memories from Firestore
         const path = `users/${user.uid}`;
         try {

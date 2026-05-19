@@ -504,7 +504,7 @@ export const useUI = create<{
   setActiveWorkspaceResult: (result) => set({ activeWorkspaceResult: result }),
   isWorkspaceFullScreen: false,
   setIsWorkspaceFullScreen: (isFull) => set({ isWorkspaceFullScreen: isFull }),
-  activeOverlay: null,
+  activeOverlay: 'whatsapp',
   setActiveOverlay: (overlay) => set({ activeOverlay: overlay }),
   isGenerating: false,
   setIsGenerating: (isGenerating) => set({ isGenerating }),
