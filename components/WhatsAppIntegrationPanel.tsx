@@ -1,6 +1,7 @@
 import React, { useState, useEffect } from 'react';
 import { MessageSquare, QrCode, User, Check, RefreshCw, UploadCloud, Activity } from 'lucide-react';
 import { connectWhatsapp, syncChatwoot, getChatwootStatus } from '../lib/api-client';
+import { auth } from '../lib/firebase';
 
 export function WhatsAppIntegrationPanel() {
   const [loading, setLoading] = useState(false);
@@ -11,6 +12,11 @@ export function WhatsAppIntegrationPanel() {
   const [syncing, setSyncing] = useState(false);
 
   const fetchConnection = async () => {
+    if (!auth.currentUser) {
+      setError('Please sign in first to manage WhatsApp integration.');
+      return;
+    }
+    
     try {
       setLoading(true);
       setError('');
@@ -18,7 +24,11 @@ export function WhatsAppIntegrationPanel() {
       setData(res);
       await fetchSyncStatus(res);
     } catch (e: any) {
-      setError(e.message || 'Failed to connect to GoWA');
+      if (e.message.includes('401') || e.message.includes('token')) {
+        setError('Authentication session expired or invalid. Please refresh and sign in again.');
+      } else {
+        setError(e.message || 'Failed to connect to GoWA');
+      }
     } finally {
       setLoading(false);
     }
@@ -56,7 +66,17 @@ export function WhatsAppIntegrationPanel() {
   };
 
   useEffect(() => {
-    fetchConnection();
+    // Wait for auth to stabilize before fetching connection
+    const unsubscribe = auth.onAuthStateChanged((user) => {
+      if (user) {
+        fetchConnection();
+      } else {
+        setError('Authentication required');
+        setLoading(false);
+      }
+    });
+
+    return () => unsubscribe();
   }, []);
 
   return (

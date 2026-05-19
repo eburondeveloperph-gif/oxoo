@@ -8,7 +8,10 @@ export const apiClient = {
     if (token) headers['Authorization'] = `Bearer ${token}`;
     
     const response = await fetch(endpoint, { headers });
-    if (!response.ok) throw new Error(`API Error: ${response.statusText}`);
+    if (!response.ok) {
+      const errData = await response.json().catch(() => ({}));
+      throw new Error(errData.error || `API Error: ${response.statusText}`);
+    }
     return response.json();
   },
 
@@ -21,7 +24,10 @@ export const apiClient = {
       headers,
       body: JSON.stringify(body)
     });
-    if (!response.ok) throw new Error(`API Error: ${response.statusText}`);
+    if (!response.ok) {
+      const errData = await response.json().catch(() => ({}));
+      throw new Error(errData.error || `API Error: ${response.statusText}`);
+    }
     return response.json();
   },
 
@@ -34,7 +40,10 @@ export const apiClient = {
       headers,
       body: JSON.stringify(body)
     });
-    if (!response.ok) throw new Error(`API Error: ${response.statusText}`);
+    if (!response.ok) {
+      const errData = await response.json().catch(() => ({}));
+      throw new Error(errData.error || `API Error: ${response.statusText}`);
+    }
     return response.json();
   },
 
@@ -43,7 +52,10 @@ export const apiClient = {
     if (token) headers['Authorization'] = `Bearer ${token}`;
     
     const response = await fetch(endpoint, { method: 'DELETE', headers });
-    if (!response.ok) throw new Error(`API Error: ${response.statusText}`);
+    if (!response.ok) {
+      const errData = await response.json().catch(() => ({}));
+      throw new Error(errData.error || `API Error: ${response.statusText}`);
+    }
     return response.json();
   }
 };
